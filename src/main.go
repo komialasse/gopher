@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 )
 
-func main() {}
+func main() {
+	fmt.Println(flag.Args());
+}
