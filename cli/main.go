@@ -12,6 +12,7 @@ func main() {
 	flag.StringVar(&to, "to", "server", "address of the remote server")
 	flag.Parse()
 
+
 	server := gopher.Server{}
 	server.Listen()
 }
