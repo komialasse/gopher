@@ -1,21 +1,19 @@
 package gopher
 
 import (
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
 )
 
-func handle(conn net.Conn) {
+func handle(dec *gob.Decoder) {
 	var m Message
-	var b []byte
-	conn.Read(b)
-	err := json.Unmarshal(b, &m)
+	err := dec.Decode(&m)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(m)
+	fmt.Printf("type of m: %T\n", (m))
 }
 
 type Server struct {}
@@ -28,13 +26,16 @@ func (s *Server) Listen() {
 	}
 	defer ln.Close()
 
+	log.Printf("server listening on %v", ln.Addr().String())
+
 	for {
 		conn, err := ln.Accept()
 		log.Println("connection!");
 		if err != nil {
 			panic(err)
 		}
-		go handle(conn)
+		decoder := gob.NewDecoder(conn)
+		go handle(decoder)
 	}
 }
 
