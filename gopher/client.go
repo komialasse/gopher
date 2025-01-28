@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+const DEFAULT_PORT = 8080 
+
 type Message interface {
 }
 
@@ -21,9 +23,9 @@ type AcceptMessage struct {
 type Client struct {
 	enc *gob.Encoder
 	to string
-	localhost string
-	local_port int
-	remote_port int
+	localHost string
+	localPort int
+	remotePort int
 }
 
 func (c *Client) Send(msg Message) {
@@ -33,19 +35,40 @@ func (c *Client) Send(msg Message) {
 	}
 }
 
-func NewClient(localhost, to string, local_port, remote_port int) *Client {
-		addr := fmt.Sprintf("%s:%d", to, remote_port)
+
+func NewClient(localHost, to string, localPort, port int) *Client {
+		addr := fmt.Sprintf("%s:%d", to, DEFAULT_PORT)
 		log.Printf("client connecting to addr = %v\n", addr)
 		conn, err := net.Dial("tcp", addr)
 		enc := gob.NewEncoder(conn)
+		dec := gob.NewDecoder(conn)
 		if err != nil {
 			panic(err)
 		}
+		
+
+
+		handshake := func() int {
+			var hello Message = HelloMessage{ ForwardPort: port }
+			enc.Encode(&hello)
+
+			var m Message
+			dec.Decode(&m)
+			fmt.Printf("m: %v\n", m)
+			switch msg := m.(type) {
+			case HelloMessage:
+				return msg.ForwardPort
+			default:
+				panic("remote server did not respond with forward port")
+			}
+		}
+		remotePort := handshake()
+
 		return &Client{
 			enc,
 			to,
-			localhost,
-			local_port,
-			remote_port,
+			localHost,
+			localPort,
+			remotePort,
 		}
 }
