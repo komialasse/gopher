@@ -19,7 +19,7 @@ const (
 func main() {
 
 	// Find a good place for this.
-	gob.Register(gopher.HelloMessage{})
+	gob.Register(gopher.Hello{})
 
 	command := os.Args[1]
 

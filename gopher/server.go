@@ -52,20 +52,20 @@ func handle(enc *gob.Encoder, dec *gob.Decoder) {
 		panic(err)
 	}
 	switch msg := m.(type) {
-	case HelloMessage:
+	case Hello:
 		ch := make(chan net.Listener)
-		go getListner(msg.ForwardPort, ch)
+		go getListner(msg.Port, ch)
 		ln := <- ch
 		fmt.Println("received ln")
 		_, p, err := net.SplitHostPort(ln.Addr().String())
 		if err != nil {
 			panic(err)
 		}
-		port, err := strconv.Atoi(p)
+		Port, err := strconv.Atoi(p)
 		if err != nil {
 			panic(err)
 		}
-		var hello Message = HelloMessage { ForwardPort: port}
+		var hello Message = Hello { Port }
 		enc.Encode(&hello)
 	default:
 	}
