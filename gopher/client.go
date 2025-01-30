@@ -19,11 +19,11 @@ type Hello struct {
 }
 
 type Accept struct {
-	id uuid.UUID
+	Id uuid.UUID
 }
 
 type Client struct {
-	enc *gob.Encoder
+	stream *Stream
 	to string
 	localHost string
 	localPort int
@@ -31,28 +31,41 @@ type Client struct {
 }
 
 func (c *Client) Send(msg Message) {
-	err := c.enc.Encode(&msg)
+	err := c.stream.enc.Encode(&msg)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (c *Client) Listen() {}
+func (c *Client) Listen() {
+	var m Message
+	fmt.Println("decoding...")
+	err := c.stream.dec.Decode(&m)
+	fmt.Println("done decoding")
+	if err != nil {
+		panic(err)
+	}
+	switch msg := m.(type) {
+	case Connect:
+		fmt.Printf("server sent connect with id %v\n", msg.Id)
+	}
+}
 
 
 func NewClient(localHost, to string, localPort, Port int) *Client {
 		addr := fmt.Sprintf("%s:%d", to, DEFAULT_PORT)
 		log.Printf("client connecting to addr = %v\n", addr)
 		conn, err := net.Dial("tcp", addr)
-		enc := gob.NewEncoder(conn)
-		dec := gob.NewDecoder(conn)
 		if err != nil {
 			panic(err)
 		}
+		defer conn.Close()
+
 		
-
-
+		
 		handshake := func() int {
+			enc := gob.NewEncoder(conn)
+			dec := gob.NewDecoder(conn)
 			var hello Message = Hello { Port }
 			enc.Encode(&hello)
 
@@ -66,9 +79,18 @@ func NewClient(localHost, to string, localPort, Port int) *Client {
 			}
 		}
 		remotePort := handshake()
+		// Connect to server at remote proxy.
+		addr = fmt.Sprintf("%s:%d", to, remotePort)
+		log.Printf("client connecting to addr = %v\n", addr)
+		conn, err = net.Dial("tcp", addr)
+		if err != nil {
+			panic(err)
+		}
+
+		stream := Stream{gob.NewEncoder(conn), gob.NewDecoder(conn)}
 
 		return &Client{
-			enc,
+			&stream,
 			to,
 			localHost,
 			localPort,

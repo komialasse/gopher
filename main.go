@@ -19,6 +19,8 @@ func main() {
 
 	// Find a good place for this.
 	gob.Register(gopher.Hello{})
+	gob.Register(gopher.Connect{})
+	gob.Register(gopher.Accept{})
 
 	command := os.Args[1]
 

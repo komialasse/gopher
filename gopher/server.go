@@ -16,6 +16,10 @@ type Stream struct {
 	dec *gob.Decoder
 }
 
+type Connect struct {
+	Id uuid.UUID
+}
+
 func getListner(port int, c chan net.Listener) {
 	bind := func(port int) (net.Listener, error) {
 		ln, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
@@ -70,18 +74,23 @@ func (server *Server) handle(stream *Stream) {
 			panic(err)
 		}
 		var hello Message = Hello { Port }
+		fmt.Printf("sending hello at port %v\n", Port)
 		stream.enc.Encode(&hello)
 
 		for {
+			fmt.Println("waiting for accept")
 			conn, err := ln.Accept()
+			fmt.Println("done waiting")
 			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)
 			if err != nil {
 				panic(err)
 			}
 
-			id := uuid.New()
-			server.conns[id] = Stream { enc, dec }
-
+			Id := uuid.New()
+			server.conns[Id] = Stream { enc, dec }
+			var connect Message = Connect { Id }
+			fmt.Println("server sending connect")
+			stream.enc.Encode(&connect)
 		}
 	default:
 	}
