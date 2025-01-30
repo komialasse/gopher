@@ -7,8 +7,14 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
+type Stream struct {
+	enc *gob.Encoder
+	dec *gob.Decoder
+}
 
 func getListner(port int, c chan net.Listener) {
 	bind := func(port int) (net.Listener, error) {
@@ -18,7 +24,6 @@ func getListner(port int, c chan net.Listener) {
 
 	if port > 0 {
 		// Port is not default 0 value.
-		fmt.Println("port is greater than 0")
 		ln, err := bind(port)
 		if err != nil {
 			panic(err)
@@ -45,9 +50,9 @@ func getListner(port int, c chan net.Listener) {
 
 }
 
-func handle(enc *gob.Encoder, dec *gob.Decoder) {
+func (server *Server) handle(stream *Stream) {
 	var m Message
-	err := dec.Decode(&m)
+	err := stream.dec.Decode(&m)
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +61,6 @@ func handle(enc *gob.Encoder, dec *gob.Decoder) {
 		ch := make(chan net.Listener)
 		go getListner(msg.Port, ch)
 		ln := <- ch
-		fmt.Println("received ln")
 		_, p, err := net.SplitHostPort(ln.Addr().String())
 		if err != nil {
 			panic(err)
@@ -66,12 +70,26 @@ func handle(enc *gob.Encoder, dec *gob.Decoder) {
 			panic(err)
 		}
 		var hello Message = Hello { Port }
-		enc.Encode(&hello)
+		stream.enc.Encode(&hello)
+
+		for {
+			conn, err := ln.Accept()
+			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)
+			if err != nil {
+				panic(err)
+			}
+
+			id := uuid.New()
+			server.conns[id] = Stream { enc, dec }
+
+		}
 	default:
 	}
 }
 
-type Server struct {}
+type Server struct {
+	conns map[uuid.UUID]Stream
+}
 
 func (s *Server) Listen() {
 	ln, err := net.Listen("tcp", ":8080")
@@ -91,10 +109,13 @@ func (s *Server) Listen() {
 		}
 		enc := gob.NewEncoder(conn) 
 		dec := gob.NewDecoder(conn)
-		go handle(enc, dec)
+		server := NewServer()
+		stream := Stream { enc, dec }
+		go server.handle(&stream)
 	}
 }
 
 func NewServer() *Server {
-	return &Server {}
+	conns := make(map[uuid.UUID]Stream)
+	return &Server { conns }
 }

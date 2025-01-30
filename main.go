@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/gob"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -40,7 +39,7 @@ func main() {
 			log.Fatal(err)
 		}
 		client := gopher.NewClient(*localhost, *to, localPort, *remotePort)
-		fmt.Println(client)
+		client.Listen()
 	case SERVER:
 		server := gopher.NewServer()
 		server.Listen()

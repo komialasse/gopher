@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+
+	"github.com/google/uuid"
 )
 
 const DEFAULT_PORT = 8080 
@@ -14,6 +16,10 @@ type Message interface {
 
 type Hello struct {
 	Port int
+}
+
+type Accept struct {
+	id uuid.UUID
 }
 
 type Client struct {
@@ -30,6 +36,8 @@ func (c *Client) Send(msg Message) {
 		panic(err)
 	}
 }
+
+func (c *Client) Listen() {}
 
 
 func NewClient(localHost, to string, localPort, Port int) *Client {
@@ -50,7 +58,6 @@ func NewClient(localHost, to string, localPort, Port int) *Client {
 
 			var m Message
 			dec.Decode(&m)
-			fmt.Printf("m: %v\n", m)
 			switch msg := m.(type) {
 			case Hello:
 				return msg.Port
