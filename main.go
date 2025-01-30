@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	LOCAL = "local"
+	LOCAL  = "local"
 	SERVER = "server"
 )
 

@@ -12,8 +12,9 @@ import (
 )
 
 type Stream struct {
-	enc *gob.Encoder
-	dec *gob.Decoder
+	conn *net.Conn
+	enc  *gob.Encoder
+	dec  *gob.Decoder
 }
 
 type Connect struct {
@@ -38,14 +39,14 @@ func getListner(port int, c chan net.Listener) {
 			// Find a  port in some sample of ports
 			min := 10
 			max := 50
-			port = rand.Intn(max - min) + 1 + min
+			port = rand.Intn(max-min) + 1 + min
 			ln, err := bind(port)
 
 			if err != nil {
 				continue
 			} else {
 				c <- ln
-				return 
+				return
 			}
 		}
 
@@ -64,7 +65,7 @@ func (server *Server) handle(stream *Stream) {
 	case Hello:
 		ch := make(chan net.Listener)
 		go getListner(msg.Port, ch)
-		ln := <- ch
+		ln := <-ch
 		_, p, err := net.SplitHostPort(ln.Addr().String())
 		if err != nil {
 			panic(err)
@@ -73,24 +74,25 @@ func (server *Server) handle(stream *Stream) {
 		if err != nil {
 			panic(err)
 		}
-		var hello Message = Hello { Port }
-		fmt.Printf("sending hello at port %v\n", Port)
+		var hello Message = Hello{Port}
+		log.Printf("sending hello at port %v\n", Port)
 		stream.enc.Encode(&hello)
 
 		for {
-			fmt.Println("waiting for accept")
+			log.Println("waiting for accept")
 			conn, err := ln.Accept()
-			fmt.Println("done waiting")
+			log.Println("done waiting")
 			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)
 			if err != nil {
 				panic(err)
 			}
 
 			Id := uuid.New()
-			server.conns[Id] = Stream { enc, dec }
-			var connect Message = Connect { Id }
-			fmt.Println("server sending connect")
+			server.conns[Id] = Stream{&conn, enc, dec}
+			var connect Message = Connect{Id}
+			log.Println("server sending connect on conn")
 			stream.enc.Encode(&connect)
+			log.Println("done sending connect")
 		}
 	default:
 	}
@@ -112,19 +114,19 @@ func (s *Server) Listen() {
 
 	for {
 		conn, err := ln.Accept()
-		log.Println("connection!");
+		log.Println("connection!")
 		if err != nil {
 			panic(err)
 		}
-		enc := gob.NewEncoder(conn) 
+		enc := gob.NewEncoder(conn)
 		dec := gob.NewDecoder(conn)
 		server := NewServer()
-		stream := Stream { enc, dec }
+		stream := Stream{&conn, enc, dec}
 		go server.handle(&stream)
 	}
 }
 
 func NewServer() *Server {
 	conns := make(map[uuid.UUID]Stream)
-	return &Server { conns }
+	return &Server{conns}
 }
