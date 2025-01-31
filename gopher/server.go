@@ -79,7 +79,7 @@ func (server *Server) handle(stream *Stream) {
 		stream.enc.Encode(&hello)
 
 		for {
-			log.Println("waiting for accept")
+			log.Printf("waiting for accept on addr: %v\n", ln.Addr().String())
 			conn, err := ln.Accept()
 			log.Println("done waiting")
 			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)

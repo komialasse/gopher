@@ -24,7 +24,7 @@ type Accept struct {
 }
 
 type Client struct {
-	conn       *net.Conn
+	conn 		*net.Conn
 	stream     *Stream
 	to         string
 	localHost  string
@@ -115,13 +115,6 @@ func NewClient(localHost, to string, localPort, Port int) *Client {
 		}
 	}
 	remotePort := handshake()
-	// Connect to server at remote proxy.
-	addr = fmt.Sprintf("%s:%d", to, remotePort)
-	log.Printf("client connecting to addr = %v\n", addr)
-	conn, err = net.Dial("tcp", addr)
-	if err != nil {
-		panic(err)
-	}
 
 	return &Client{
 		&conn,
