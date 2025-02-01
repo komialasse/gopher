@@ -30,7 +30,7 @@ func main() {
 		}
 
 		localfs := flag.NewFlagSet(LOCAL, flag.ExitOnError)
-		localhost := localfs.String("localhost", "localhost", "the local host to export")
+		localhost := localfs.String("localhost", "localhost", "the local host to expose")
 		to := localfs.String("to", "localhost", "address of remote server")
 		remotePort := localfs.Int("port", 8081, "port of remote server")
 
