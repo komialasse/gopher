@@ -91,19 +91,24 @@ func (c *Client) Listen() {
 	}
 }
 
+func (c *Client) RemotePort() int {
+	return c.remotePort
+}
+
 func NewClient(localHost, to string, localPort, port int) *Client {
 	addr := fmt.Sprintf("%s:%d", to, DEFAULT_PORT)
 	log.Printf("client connecting to %v\n", addr)
 	conn, err := net.Dial("tcp", addr)
-	stream := Stream{&conn, gob.NewEncoder(conn), gob.NewDecoder(conn)}
+	stream := NewStream(conn)
 	if err != nil {
 		panic(err)
 	}
 
 	handshake := func() int {
-		var hello Message = Hello{ port }
+		var hello Message = Hello{ Port: port }
+		fmt.Println("sending handshake from", (*stream.conn).LocalAddr().String())
 		stream.enc.Encode(&hello)
-
+		fmt.Println("done")
 		var m Message
 		stream.dec.Decode(&m)
 		switch msg := m.(type) {
@@ -117,7 +122,7 @@ func NewClient(localHost, to string, localPort, port int) *Client {
 
 	return &Client{
 		&conn,
-		&stream,
+		stream,
 		to,
 		localHost,
 		localPort,

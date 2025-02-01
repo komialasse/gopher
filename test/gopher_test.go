@@ -2,15 +2,19 @@ package gopher_test
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/gopher"
 )
 
-func getClient() *gopher.Client {
+func getClient() string {
 	// TODO: add remaining setup code.
-	return gopher.NewClient("localhost", "localhost", 5050, 8080)
+	client := gopher.NewClient("localhost", "localhost", 5050, 8080)
+	remoteAddress := fmt.Sprintf("localhost:%v", client.RemotePort())
+	return remoteAddress
 }
 
 func startServer(ctx context.Context) *gopher.Server {
@@ -34,4 +38,11 @@ func TestSetupServer(t *testing.T) {
 		t.Error("server failed to initialize")
 	}
 
+	address := getClient()
+	fmt.Println("address is ", address)
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(conn, "hello world")
 }

@@ -58,7 +58,9 @@ func getListner(port int, c chan net.Listener) {
 
 func (server *Server) handle(stream *Stream) {
 	var m Message
+	fmt.Printf("decoding from %v\n", (*stream.conn).RemoteAddr().String())
 	err := stream.dec.Decode(&m)
+	fmt.Println("done decoding in server")
 	if err != nil {
 		panic(err)
 	}
@@ -79,14 +81,14 @@ func (server *Server) handle(stream *Stream) {
 		stream.enc.Encode(&hello)
 
 		for {
+			fmt.Println("waiting for accept")
 			conn, err := ln.Accept()
-			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)
 			if err != nil {
 				panic(err)
 			}
 
 			id := uuid.New()
-			server.conns[id] = Stream{&conn, enc, dec}
+			server.conns[id] = NewStream(conn)
 			var connect Message = Connect{ id }
 			stream.enc.Encode(&connect)
 		}
@@ -95,7 +97,7 @@ func (server *Server) handle(stream *Stream) {
 }
 
 type Server struct {
-	conns map[uuid.UUID]Stream
+	conns map[uuid.UUID]*Stream
 }
 
 func (s *Server) Listen(ctx context.Context) error {
@@ -125,15 +127,12 @@ func (s *Server) Listen(ctx context.Context) error {
 		}
 		log.Println("connection!")
 
-		enc := gob.NewEncoder(conn)
-		dec := gob.NewDecoder(conn)
-		server := NewServer()
-		stream := Stream{&conn, enc, dec}
-		go server.handle(&stream)
+		stream := NewStream(conn)
+		go s.handle(stream)
 	}
 }
 
 func NewServer() *Server {
-	conns := make(map[uuid.UUID]Stream)
+	conns := make(map[uuid.UUID]*Stream)
 	return &Server{conns}
 }
