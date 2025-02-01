@@ -17,7 +17,7 @@ const REMOTE_PORT = 8081
 
 const helloWorld = "hello world"
 
-func getClient() (net.Listener, string) {
+func getClient(ctx context.Context) (net.Listener, string) {
 	listener, err := net.Listen("tcp", ":0");
 	if err != nil {
 		panic(err)
@@ -25,7 +25,7 @@ func getClient() (net.Listener, string) {
 	port := gopher.GetPort(listener.Addr())
 	client := gopher.NewClient("localhost", "localhost", port, REMOTE_PORT)
 	remoteAddress := fmt.Sprintf("localhost:%v", client.RemotePort())
-	go client.Listen()
+	go client.Listen(ctx)
 	return listener, remoteAddress
 }
 
@@ -56,7 +56,7 @@ func TestSetupServer(t *testing.T) {
 		t.Error("server failed to initialize")
 	}
 
-	listener, address := getClient()
+	listener, address := getClient(ctx)
 
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {

@@ -1,6 +1,7 @@
 package gopher
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -62,14 +63,22 @@ func (c *Client) handleConn(Id uuid.UUID) {
 	go proxy(&localConn, &remoteConn)
 }
 
-func (c *Client) Listen() {
-	defer (*c.conn).Close()
+func (c *Client) Listen(ctx context.Context) error {
+	go func() {
+		<-ctx.Done()
+		(*c.conn).Close()
+	}()
 
 	for {
 		var m Message
 		err := c.stream.dec.Decode(&m)
 		if err != nil {
-			panic(err)
+			select {
+			case <- ctx.Done():
+				return ctx.Err()
+			default: 
+				panic(err)
+			}
 		}
 		switch msg := m.(type) {
 		case Connect:

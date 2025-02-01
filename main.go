@@ -38,7 +38,7 @@ func main() {
 			log.Fatal(err)
 		}
 		client := gopher.NewClient(*localhost, *to, localPort, *remotePort)
-		client.Listen()
+		client.Listen(context.Background())
 	case SERVER:
 		server := gopher.NewServer()
 		server.Listen(context.Background())
