@@ -10,19 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const DEFAULT_PORT = 8080
-
-type Message interface {
-}
-
-type Hello struct {
-	Port int
-}
-
-type Accept struct {
-	Id uuid.UUID
-}
-
 type Client struct {
 	conn       *net.Conn
 	stream     *Stream
@@ -106,9 +93,7 @@ func NewClient(localHost, to string, localPort, port int) *Client {
 
 	handshake := func() int {
 		var hello Message = Hello{ Port: port }
-		fmt.Println("sending handshake from", (*stream.conn).LocalAddr().String())
 		stream.enc.Encode(&hello)
-		fmt.Println("done")
 		var m Message
 		stream.dec.Decode(&m)
 		switch msg := m.(type) {

@@ -4,27 +4,45 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
+	"sync"
 	"testing"
+
 	"time"
 
 	"github.com/gopher"
 )
 
-func getClient() string {
-	// TODO: add remaining setup code.
-	client := gopher.NewClient("localhost", "localhost", 5050, 8080)
+const REMOTE_PORT = 8081
+
+const helloWorld = "hello world"
+
+func getClient() (net.Listener, string) {
+	listener, err := net.Listen("tcp", ":0");
+	if err != nil {
+		panic(err)
+	}
+	port := gopher.GetPort(listener.Addr())
+	client := gopher.NewClient("localhost", "localhost", port, REMOTE_PORT)
 	remoteAddress := fmt.Sprintf("localhost:%v", client.RemotePort())
-	return remoteAddress
+	go client.Listen()
+	return listener, remoteAddress
 }
 
 func startServer(ctx context.Context) *gopher.Server {
-	// TODO: add remaining setup.
 	server := gopher.NewServer()
 	go server.Listen(ctx)
 	return server
 }
 
+func setup() {
+	gopher.RegisterMessages()
+}
+
 func TestSetupServer(t *testing.T) {
+	setup()
+	
+	var wg sync.WaitGroup
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	server := startServer(ctx)
@@ -38,11 +56,27 @@ func TestSetupServer(t *testing.T) {
 		t.Error("server failed to initialize")
 	}
 
-	address := getClient()
-	fmt.Println("address is ", address)
+	listener, address := getClient()
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		c, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
+		buf := make([]byte, 11)
+		c.Read(buf)
+		if !slices.Equal(buf, []byte(helloWorld)) {
+			t.Errorf("buf = %v, wanted %v", string(buf), helloWorld)
+		}
+		wg.Done()
+	}(&wg)
+
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(conn, "hello world")
+	conn.Write([]byte(helloWorld))
+
+	wg.Wait()
 }

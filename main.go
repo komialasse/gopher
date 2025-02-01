@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"flag"
 	"log"
 	"os"
@@ -18,9 +17,7 @@ const (
 
 func main() {
 
-	gob.Register(gopher.Hello{})
-	gob.Register(gopher.Connect{})
-	gob.Register(gopher.Accept{})
+	gopher.RegisterMessages()
 
 	command := os.Args[1]
 

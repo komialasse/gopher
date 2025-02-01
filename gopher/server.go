@@ -2,24 +2,16 @@ package gopher
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
-	"strconv"
 
 	"github.com/google/uuid"
 )
 
-type Stream struct {
-	conn *net.Conn
-	enc  *gob.Encoder
-	dec  *gob.Decoder
-}
-
-type Connect struct {
-	Id uuid.UUID
+type Server struct {
+	conns map[uuid.UUID]*Stream
 }
 
 func getListner(port int, c chan net.Listener) {
@@ -37,10 +29,9 @@ func getListner(port int, c chan net.Listener) {
 		c <- ln
 	} else {
 		for range 100 {
-			// Find a  port in some sample of ports
-			min := 10
-			max := 50
-			port = rand.Intn(max-min) + 1 + min
+			minPort := 1024 // 2^10
+			maxPort := 65536 // 2^16
+			port = rand.Intn(maxPort-minPort) + 1 + minPort
 			ln, err := bind(port)
 
 			if err != nil {
@@ -50,7 +41,6 @@ func getListner(port int, c chan net.Listener) {
 				return
 			}
 		}
-
 		panic("unable to find port")
 	}
 
@@ -58,9 +48,7 @@ func getListner(port int, c chan net.Listener) {
 
 func (server *Server) handle(stream *Stream) {
 	var m Message
-	fmt.Printf("decoding from %v\n", (*stream.conn).RemoteAddr().String())
 	err := stream.dec.Decode(&m)
-	fmt.Println("done decoding in server")
 	if err != nil {
 		panic(err)
 	}
@@ -69,19 +57,11 @@ func (server *Server) handle(stream *Stream) {
 		ch := make(chan net.Listener)
 		go getListner(msg.Port, ch)
 		ln := <-ch
-		_, p, err := net.SplitHostPort(ln.Addr().String())
-		if err != nil {
-			panic(err)
-		}
-		port, err := strconv.Atoi(p)
-		if err != nil {
-			panic(err)
-		}
+		port := GetPort(ln.Addr())
 		var hello Message = Hello{ port }
 		stream.enc.Encode(&hello)
 
 		for {
-			fmt.Println("waiting for accept")
 			conn, err := ln.Accept()
 			if err != nil {
 				panic(err)
@@ -92,12 +72,17 @@ func (server *Server) handle(stream *Stream) {
 			var connect Message = Connect{ id }
 			stream.enc.Encode(&connect)
 		}
+	case Accept:
+		// forward connection
+		otherStream, ok := server.conns[msg.Id]
+		if !ok {
+			log.Println("missing connection")
+		}
+		delete(server.conns, msg.Id)
+		proxy(stream.conn, otherStream.conn)
 	default:
+		log.Println("unrecognized message")
 	}
-}
-
-type Server struct {
-	conns map[uuid.UUID]*Stream
 }
 
 func (s *Server) Listen(ctx context.Context) error {
