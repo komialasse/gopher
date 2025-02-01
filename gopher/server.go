@@ -1,6 +1,7 @@
 package gopher
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"log"
@@ -70,29 +71,24 @@ func (server *Server) handle(stream *Stream) {
 		if err != nil {
 			panic(err)
 		}
-		Port, err := strconv.Atoi(p)
+		port, err := strconv.Atoi(p)
 		if err != nil {
 			panic(err)
 		}
-		var hello Message = Hello{Port}
-		log.Printf("sending hello at port %v\n", Port)
+		var hello Message = Hello{ port }
 		stream.enc.Encode(&hello)
 
 		for {
-			log.Printf("waiting for accept on addr: %v\n", ln.Addr().String())
 			conn, err := ln.Accept()
-			log.Println("done waiting")
 			enc, dec := gob.NewEncoder(conn), gob.NewDecoder(conn)
 			if err != nil {
 				panic(err)
 			}
 
-			Id := uuid.New()
-			server.conns[Id] = Stream{&conn, enc, dec}
-			var connect Message = Connect{Id}
-			log.Println("server sending connect on conn")
+			id := uuid.New()
+			server.conns[id] = Stream{&conn, enc, dec}
+			var connect Message = Connect{ id }
 			stream.enc.Encode(&connect)
-			log.Println("done sending connect")
 		}
 	default:
 	}
@@ -102,22 +98,33 @@ type Server struct {
 	conns map[uuid.UUID]Stream
 }
 
-func (s *Server) Listen() {
-	ln, err := net.Listen("tcp", ":8080")
+func (s *Server) Listen(ctx context.Context) error {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(ctx, "tcp", fmt.Sprintf(":%v", DEFAULT_PORT))
 
 	if err != nil {
 		panic(err)
 	}
-	defer ln.Close()
+
+	go func() {
+		<-ctx.Done()
+		ln.Close()
+	}()
 
 	log.Printf("server listening on %v", ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
-		log.Println("connection!")
 		if err != nil {
-			panic(err)
+			select {
+			case <- ctx.Done():
+				return ctx.Err()
+			default: 
+				panic(err)
+			}
 		}
+		log.Println("connection!")
+
 		enc := gob.NewEncoder(conn)
 		dec := gob.NewDecoder(conn)
 		server := NewServer()

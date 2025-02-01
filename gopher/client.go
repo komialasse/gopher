@@ -24,7 +24,7 @@ type Accept struct {
 }
 
 type Client struct {
-	conn 		*net.Conn
+	conn       *net.Conn
 	stream     *Stream
 	to         string
 	localHost  string
@@ -53,26 +53,26 @@ func copy(closer chan struct{}, dst io.Writer, src io.ReadCloser) {
 
 func proxy(local, remote *net.Conn) {
 	closer := make(chan struct{}, 2)
-		go copy(closer, *local, *remote)
-		go copy(closer, *remote, *local)
+	go copy(closer, *local, *remote)
+	go copy(closer, *remote, *local)
 	<-closer
 }
 
-func (c *Client) handleConnection(Id uuid.UUID) {
-	remoteConnection, err := net.Dial("tcp", fmt.Sprintf("%v:%v", c.to, DEFAULT_PORT))
+func (c *Client) handleConn(Id uuid.UUID) {
+	remoteConn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", c.to, DEFAULT_PORT))
 	if err != nil {
 		panic(err)
 	}
-	stream := NewStream(remoteConnection)
+	stream := NewStream(remoteConn)
 	var accept Message = Message(Accept{Id})
 	stream.enc.Encode(&accept)
 
-	localConnection, err := net.Dial("tcp", fmt.Sprintf("%v:%v", c.localHost, c.localPort))
+	localConn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", c.localHost, c.localPort))
 	if err != nil {
 		panic(err)
 	}
 
-	go proxy(&localConnection, &remoteConnection)
+	go proxy(&localConn, &remoteConn)
 }
 
 func (c *Client) Listen() {
@@ -86,15 +86,14 @@ func (c *Client) Listen() {
 		}
 		switch msg := m.(type) {
 		case Connect:
-			log.Printf("server connect with id: %v", msg.Id)
-			go c.handleConnection(msg.Id)
+			go c.handleConn(msg.Id)
 		}
 	}
 }
 
-func NewClient(localHost, to string, localPort, Port int) *Client {
+func NewClient(localHost, to string, localPort, port int) *Client {
 	addr := fmt.Sprintf("%s:%d", to, DEFAULT_PORT)
-	log.Printf("client connecting to addr = %v\n", addr)
+	log.Printf("client connecting to %v\n", addr)
 	conn, err := net.Dial("tcp", addr)
 	stream := Stream{&conn, gob.NewEncoder(conn), gob.NewDecoder(conn)}
 	if err != nil {
@@ -102,7 +101,7 @@ func NewClient(localHost, to string, localPort, Port int) *Client {
 	}
 
 	handshake := func() int {
-		var hello Message = Hello{Port}
+		var hello Message = Hello{ port }
 		stream.enc.Encode(&hello)
 
 		var m Message
