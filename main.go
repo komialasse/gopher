@@ -15,6 +15,8 @@ const (
 	SERVER = "server"
 )
 
+
+
 func main() {
 
 	gopher.RegisterMessages()
@@ -29,15 +31,8 @@ func main() {
 			log.Fatalf("Could not parse local port %v", os.Args[2])
 		}
 
-		localfs := flag.NewFlagSet(LOCAL, flag.ExitOnError)
-		localhost := localfs.String("localhost", "localhost", "the local host to expose")
-		to := localfs.String("to", "localhost", "address of remote server")
-		remotePort := localfs.Int("port", 8081, "port of remote server")
-
-		if err := localfs.Parse(subArgs); err != nil {
-			log.Fatal(err)
-		}
-		client := gopher.NewClient(*localhost, *to, localPort, *remotePort)
+		localHost, to, remotePort := parseLocalArgs(subArgs)
+		client := gopher.NewClient(localHost, to, localPort, remotePort)
 		client.Listen(context.Background())
 	case SERVER:
 		server := gopher.NewServer()
@@ -45,4 +40,20 @@ func main() {
 	default:
 		log.Fatal("unrecognized command")
 	}
+}
+
+func parseLocalArgs(args []string) (string, string, int) {
+	localfs := flag.NewFlagSet(LOCAL, flag.ExitOnError)
+	var localhost string
+	var port int 
+	localfs.StringVar(&localhost, "localhost", "localhost", "the local host to expose")
+	localfs.StringVar(&localhost, "l", "localhost", "the local host to expose")
+	to := localfs.String("to", "localhost", "address of remote server")
+	localfs.IntVar(&port, "port", 8081, "port of remote server")
+	localfs.IntVar(&port, "p", 8081, "port of remote server")
+
+	if err := localfs.Parse(args); err != nil {
+		log.Fatal(err)
+	}
+	return localhost, *to, port
 }
